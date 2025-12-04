@@ -1072,7 +1072,7 @@ function buildGemCards(combo){
   return combo.map(t => {
     const c = t.toUpperCase();
     const info = ASTROGEMS[c];
-    return `<div class="gem-card gem-${c}"><div class="gem-type">${c}</div><div class="gem-sub">${info.points}★ ${info.will}W</div></div>`;
+    return `<div class="gem-card gem-${c}"><div class="gem-type">${c}</div><div class="gem-sub">${info.will}W • ${info.points}P</div></div>`;
   }).join('');
 }
 
@@ -1169,3 +1169,4 @@ window.onload = function(){
 </script>
 </body>
 </html>
+
