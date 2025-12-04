@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>Ark Grid Calculator — Enhanced Edition</title>
+<title>Ark Grid Calculator — Expanded Edition</title>
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -130,9 +130,14 @@
   label { font-size: 14px; color: var(--text-muted); cursor: pointer; }
   
   .core-config {
-    display: flex; justify-content: space-between; align-items: center;
-    background: rgba(0,0,0,0.3); padding: 8px 12px;
-    border: 1px solid rgba(255,255,255,0.05); margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 40px;
+    background: rgba(0,0,0,0.3);
+    padding: 8px 12px;
+    border: 1px solid rgba(255,255,255,0.05);
+    margin-bottom: 8px;
   }
 
   button {
@@ -473,12 +478,16 @@ function buildCoreConfig(containerId, prefix){
   const container = document.getElementById(containerId);
   container.innerHTML = '';
   for(let i=1;i<=3;i++){
-    const coreId = `${prefix}_core${i}_rarity`;
+    const coreId    = `${prefix}_core${i}_rarity`;
+    const enabledId = `${prefix}_core${i}_enabled`;
     const div = document.createElement('div');
     div.className = 'core-config';
     div.id = `${prefix}_corecfg_${i}`;
     div.innerHTML = `
-      <label>Core ${i} Type:
+      <label title="Enable or disable Core ${i} in optimization"
+             style="display:flex;align-items:center;gap:6px;">
+        <input type="checkbox" id="${enabledId}" checked>
+        Core ${i}:
         <select id="${coreId}" class="core-rarity-select" data-rarity="Legendary">
           <option value="Legendary" style="color:#ff8c42;">Legendary (12 WP)</option>
           <option value="Relic" style="color:#ff5252;">Relic (15 WP)</option>
@@ -499,6 +508,7 @@ function buildCoreConfig(containerId, prefix){
       updateCoreSelectStyle(sel);
     }
   }
+
   const autoCheckbox = document.getElementById(prefix === 'class' ? 'classAuto' : 'generalAuto');
   function updateVisibility(){
     const hide = autoCheckbox.checked;
@@ -531,7 +541,7 @@ function resetResultsPanels() {
     '<div class="small">Pending calculation...</div>';
 }
 
-/* saves inventory + core types into preset storage */
+/* saves inventory + core types + enabled flags into preset storage */
 function saveInventory(){
   const select = document.getElementById('inventorySelect');
   const defaultName = (select && select.value) ? select.value : '';
@@ -547,8 +557,13 @@ function saveInventory(){
   const classInv   = readInventory('class');
   const generalInv = readInventory('general');
 
-  const classCores   = readCoreConfigs('class').map(c => c.rarity);
-  const generalCores = readCoreConfigs('general').map(c => c.rarity);
+  const classCoreCfg   = readCoreConfigs('class');
+  const generalCoreCfg = readCoreConfigs('general');
+
+  const classCores        = classCoreCfg.map(c => c.rarity);
+  const generalCores      = generalCoreCfg.map(c => c.rarity);
+  const classCoreEnabled  = classCoreCfg.map(c => !!c.enabled);
+  const generalCoreEnabled= generalCoreCfg.map(c => !!c.enabled);
 
   const all = getAllInventories();
 
@@ -556,7 +571,9 @@ function saveInventory(){
     class: classInv,
     general: generalInv,
     classCores,
-    generalCores
+    generalCores,
+    classCoreEnabled,
+    generalCoreEnabled
   };
 
   saveAllInventories(all);
@@ -566,7 +583,7 @@ function saveInventory(){
   alert(`Inventory saved as "${trimmed}".`);
 }
 
-/* loads inventory + core types from preset storage */
+/* loads inventory + core types + enabled flags from preset storage */
 function loadPresetByName(name, { silent = false } = {}) {
   if (!name) return false;
 
@@ -582,27 +599,37 @@ function loadPresetByName(name, { silent = false } = {}) {
 
   resetResultsPanels();
 
-  // restore core rarity for class
+  // restore core rarity + enabled for class
   if (obj.classCores) {
     obj.classCores.forEach((rarity, i) => {
-      const id = `class_core${i+1}_rarity`;
-      const sel = document.getElementById(id);
+      const sel = document.getElementById(`class_core${i+1}_rarity`);
       if (sel) {
         sel.value = rarity;
         updateCoreSelectStyle(sel);
       }
     });
   }
+  if (obj.classCoreEnabled) {
+    obj.classCoreEnabled.forEach((enabled, i) => {
+      const cb = document.getElementById(`class_core${i+1}_enabled`);
+      if (cb) cb.checked = !!enabled;
+    });
+  }
 
-  // restore core rarity for general
+  // restore core rarity + enabled for general
   if (obj.generalCores) {
     obj.generalCores.forEach((rarity, i) => {
-      const id = `general_core${i+1}_rarity`;
-      const sel = document.getElementById(id);
+      const sel = document.getElementById(`general_core${i+1}_rarity`);
       if (sel) {
         sel.value = rarity;
         updateCoreSelectStyle(sel);
       }
+    });
+  }
+  if (obj.generalCoreEnabled) {
+    obj.generalCoreEnabled.forEach((enabled, i) => {
+      const cb = document.getElementById(`general_core${i+1}_enabled`);
+      if (cb) cb.checked = !!enabled;
     });
   }
 
@@ -666,9 +693,13 @@ function resetDefaults(){
       const el = document.getElementById(`${side}_${gem}`);
       if(el) el.value = 0;
     });
+    // reset core enabled to true
+    for (let i = 1; i <= 3; i++) {
+      const cb = document.getElementById(`${side}_core${i}_enabled`);
+      if (cb) cb.checked = true;
+    }
   });
-  document.getElementById('classResultsInner').innerHTML = '<div class="small">Data reset.</div>';
-  document.getElementById('generalResultsInner').innerHTML = '<div class="small">Data reset.</div>';
+  resetResultsPanels();
 }
 
 /* -------------------------
@@ -722,16 +753,34 @@ function generateCoreCombos(inv, maxWill) {
 }
 
 /* -------------------------
-   Global optimizer for three cores
+   Global optimizer with selectable cores
    ------------------------- */
 function optimizeThreeCores(inv, coreConfigs){
+  // determine which cores are enabled (0–2 indices)
+  const enabledIndices = coreConfigs
+    .map((cfg, idx) => (cfg.enabled === false ? null : idx))
+    .filter(idx => idx !== null);
+
+  const enabledCount = enabledIndices.length;
+  if (enabledCount === 0) return { best: null, reason: 'no-cores-enabled' };
+
   const perCoreMaxWill = coreConfigs.map(c=> CORE_WILL[c.rarity]);
-  const perCoreTarget = coreConfigs.map(c=> c.target || 20);
+  const perCoreTarget  = coreConfigs.map(c=> c.target || 20);
 
-  const combosPerCore = [];
-  for(let i=0;i<3;i++){ combosPerCore.push(generateCoreCombos(inv, perCoreMaxWill[i])); }
+  const caps = coreConfigs.map((cfg, idx) => {
+    const baseTarget = perCoreTarget[idx] || 20;
+    const maxCap = cfg.rarity === 'Legendary' ? 14 : 20;
+    return Math.min(baseTarget, maxCap);
+  });
 
-  if(combosPerCore.some(list => list.length===0)) return { best: null, reason:'no-combos' };
+  // build combos only for enabled cores
+  const combosPerCore = enabledIndices.map(idx =>
+    generateCoreCombos(inv, perCoreMaxWill[idx])
+  );
+
+  if (combosPerCore.some(list => list.length === 0)) {
+    return { best: null, reason: 'no-combos' };
+  }
 
   const trimmed = combosPerCore.map(list => list.slice(0, TOP_N));
 
@@ -744,69 +793,160 @@ function optimizeThreeCores(inv, coreConfigs){
     return true;
   }
 
-  const caps = coreConfigs.map((cfg, idx) => {
-    const baseTarget = perCoreTarget[idx] || 20;
-    const maxCap = cfg.rarity === 'Legendary' ? 14 : 20;
-    return Math.min(baseTarget, maxCap);
-  });
+  // helper to compare candidate keys
+  function isBetterKey(key, bestKey){
+    for(let k=0;k<key.length;k++){
+      if(key[k] < bestKey[k]) return true;
+      if(key[k] > bestKey[k]) return false;
+    }
+    return false;
+  }
 
-  const list0 = trimmed[0], list1 = trimmed[1], list2 = trimmed[2];
-  
-  for(let i0=0;i0<list0.length;i0++){
-    const c0 = list0[i0];
-    for(let i1=0;i1<list1.length;i1++){
-      const c1 = list1[i1];
+  // 1 enabled core
+  if (enabledCount === 1) {
+    const gi0 = enabledIndices[0];
+    const list0 = trimmed[0];
 
-      const partial = {};
-      for(const t of Object.keys(c0.counts||{})) partial[t] = (partial[t]||0) + c0.counts[t];
-      for(const t of Object.keys(c1.counts||{})) partial[t] = (partial[t]||0) + c1.counts[t];
-      let ok01 = true;
-      for(const t of Object.keys(partial)) if(partial[t] > (inv[t]||0)){ ok01=false; break; }
-      if(!ok01) continue;
+    for (let i0 = 0; i0 < list0.length; i0++) {
+      const c0 = list0[i0];
+      if (!fitsInventory(c0.counts || {}, inv)) continue;
 
-      for(let i2=0;i2<list2.length;i2++){
-        const c2 = list2[i2];
-        const combined = {...partial};
-        for(const t of Object.keys(c2.counts||{})) combined[t] = (combined[t]||0) + c2.counts[t];
-        if(!fitsInventory(combined, inv)) continue;
+      const pts0 = Math.min(c0.points, caps[gi0]);
+      const totalPts = pts0;
+      const pref = c0.prefScore || 0;
+      const totalWill = c0.will || 0;
 
-        const pts0 = Math.min(c0.points, caps[0]);
-        const pts1 = Math.min(c1.points, caps[1]);
-        const pts2 = Math.min(c2.points, caps[2]);
-        const totalPts = pts0 + pts1 + pts2;
-        const pref = (c0.prefScore||0) + (c1.prefScore||0) + (c2.prefScore||0);
-        const totalWill = (c0.will||0) + (c1.will||0) + (c2.will||0);
+      const key = [-pts0, -totalPts, -pref, totalWill];
+      const candidate = {
+        combos: [c0],
+        coreIndices: [gi0],
+        counts: { ...(c0.counts || {}) },
+        ptsRaw: [c0.points],
+        will: [c0.will],
+        key
+      };
 
-        const key = [-pts0, -pts1, -pts2, -totalPts, -pref, totalWill];
+      if (!best || isBetterKey(key, best.key)) {
+        best = candidate;
+      }
+    }
+    return { best };
+  }
 
+  // 2 enabled cores
+  if (enabledCount === 2) {
+    const gi0 = enabledIndices[0];
+    const gi1 = enabledIndices[1];
+    const list0 = trimmed[0];
+    const list1 = trimmed[1];
+
+    for (let i0 = 0; i0 < list0.length; i0++) {
+      const c0 = list0[i0];
+
+      for (let i1 = 0; i1 < list1.length; i1++) {
+        const c1 = list1[i1];
+
+        const combined = {};
+        for (const t of Object.keys(c0.counts || {})) combined[t] = (combined[t] || 0) + c0.counts[t];
+        for (const t of Object.keys(c1.counts || {})) combined[t] = (combined[t] || 0) + c1.counts[t];
+
+        if (!fitsInventory(combined, inv)) continue;
+
+        const pts0 = Math.min(c0.points, caps[gi0]);
+        const pts1 = Math.min(c1.points, caps[gi1]);
+        const totalPts = pts0 + pts1;
+        const pref = (c0.prefScore||0) + (c1.prefScore||0);
+        const totalWill = (c0.will||0) + (c1.will||0);
+
+        const key = [-pts0, -pts1, -totalPts, -pref, totalWill];
         const candidate = {
-          combos:[c0,c1,c2],
+          combos: [c0, c1],
+          coreIndices: [gi0, gi1],
           counts: combined,
-          ptsRaw:[c0.points,c1.points,c2.points],
-          will:[c0.will,c1.will,c2.will],
+          ptsRaw: [c0.points, c1.points],
+          will: [c0.will, c1.will],
           key
         };
 
-        if(!best) { best = candidate; continue; }
-        let better = false;
-        for(let k=0;k<key.length;k++){
-          if(key[k] < best.key[k]) { better = true; break; }
-          if(key[k] > best.key[k]) break;
+        if (!best || isBetterKey(key, best.key)) {
+          best = candidate;
         }
-        if(better) best = candidate;
       }
     }
+    return { best };
   }
-  return { best };
+
+  // 3 enabled cores (full original behavior, but index-aware)
+  if (enabledCount === 3) {
+    const gi0 = enabledIndices[0];
+    const gi1 = enabledIndices[1];
+    const gi2 = enabledIndices[2];
+
+    const list0 = trimmed[0];
+    const list1 = trimmed[1];
+    const list2 = trimmed[2];
+
+    for(let i0=0;i0<list0.length;i0++){
+      const c0 = list0[i0];
+      for(let i1=0;i1<list1.length;i1++){
+        const c1 = list1[i1];
+
+        const partial = {};
+        for(const t of Object.keys(c0.counts||{})) partial[t] = (partial[t]||0) + c0.counts[t];
+        for(const t of Object.keys(c1.counts||{})) partial[t] = (partial[t]||0) + c1.counts[t];
+        let ok01 = true;
+        for(const t of Object.keys(partial)) if(partial[t] > (inv[t]||0)){ ok01=false; break; }
+        if(!ok01) continue;
+
+        for(let i2=0;i2<list2.length;i2++){
+          const c2 = list2[i2];
+          const combined = {...partial};
+          for(const t of Object.keys(c2.counts||{})) combined[t] = (combined[t]||0) + c2.counts[t];
+          if(!fitsInventory(combined, inv)) continue;
+
+          const pts0 = Math.min(c0.points, caps[gi0]);
+          const pts1 = Math.min(c1.points, caps[gi1]);
+          const pts2 = Math.min(c2.points, caps[gi2]);
+          const totalPts = pts0 + pts1 + pts2;
+          const pref = (c0.prefScore||0) + (c1.prefScore||0) + (c2.prefScore||0);
+          const totalWill = (c0.will||0) + (c1.will||0) + (c2.will||0);
+
+          const key = [-pts0, -pts1, -pts2, -totalPts, -pref, totalWill];
+
+          const candidate = {
+            combos:[c0,c1,c2],
+            coreIndices:[gi0,gi1,gi2],
+            counts: combined,
+            ptsRaw:[c0.points,c1.points,c2.points],
+            will:[c0.will,c1.will,c2.will],
+            key
+          };
+
+          if(!best || isBetterKey(key, best.key)) {
+            best = candidate;
+          }
+        }
+      }
+    }
+    return { best };
+  }
+
+  // should never hit here, but just in case
+  return { best: null, reason: 'unexpected-state' };
 }
 
+/* -------------------------
+   Config readers & render
+   ------------------------- */
 function readCoreConfigs(prefix){
   const arr=[];
   const isAuto = document.getElementById(prefix === 'class' ? 'classAuto' : 'generalAuto').checked;
   for(let i=1;i<=3;i++){
-    const rarity = document.getElementById(`${prefix}_core${i}_rarity`).value;
-    const target = isAuto ? 20 : parseInt(document.getElementById(`${prefix}_core${i}_target`).value);
-    arr.push({ rarity, target });
+    const rarity  = document.getElementById(`${prefix}_core${i}_rarity`).value;
+    const target  = isAuto ? 20 : parseInt(document.getElementById(`${prefix}_core${i}_target`).value);
+    const enabledEl = document.getElementById(`${prefix}_core${i}_enabled`);
+    const enabled = !enabledEl || enabledEl.checked;
+    arr.push({ rarity, target, enabled });
   }
   return arr;
 }
@@ -828,20 +968,23 @@ function computeRemaining(inv, used){
 function renderResults(containerId, resultObj, inv, coreConfigs){
   const container = document.getElementById(containerId);
   if(!resultObj || !resultObj.best){ 
-    container.innerHTML = `<div class="small">No valid combos found (or inventory empty).</div>`; 
+    container.innerHTML = `<div class="small">No valid combos found (or inventory empty / cores disabled).</div>`; 
     return; 
   }
   const best = resultObj.best;
   let html = '';
-  for(let i=0;i<3;i++){
+
+  for(let i=0;i<best.combos.length;i++){
     const c = best.combos[i];
+    const coreIdx = best.coreIndices ? best.coreIndices[i] : i; // fallback
     const gemCount = c.counts ? Object.values(c.counts).reduce((a,b)=>a+b,0) : c.combo.length;
-    const rarity = (coreConfigs && coreConfigs[i] && coreConfigs[i].rarity) || "Relic";
+    const cfg = coreConfigs[coreIdx] || {};
+    const rarity = cfg.rarity || "Relic";
     html += `
       <div class="core-box" data-rarity="${rarity}">
         <div class="core-header" data-rarity="${rarity}">
           <div>
-            <strong>${rarity} Core ${i+1}</strong>
+            <strong>${rarity} Core ${coreIdx+1}</strong>
             <span style="font-size:12px;color:#aaa">(${gemCount} gems)</span>
           </div>
           <div class="small" style="color:#fff">WP: ${c.will} &nbsp;•&nbsp; Pts: ${c.points}</div>
@@ -850,12 +993,15 @@ function renderResults(containerId, resultObj, inv, coreConfigs){
       </div>
     `;
   }
-  const remaining = computeRemaining(inv, best.counts);
+  const remaining = computeRemaining(inv, best.counts || {});
   const badges = Object.keys(remaining).filter(k=>remaining[k]>0).map(k => `<div class="badge">${k}: ${remaining[k]}</div>`).join('');
   html += `<div style="padding:0 4px;margin-top:12px"><strong style="font-size:12px;color:#8a96a3;text-transform:uppercase;">Unused Gems</strong><div class="remaining-badges">${badges || '<span class="small">None</span>'}</div></div>`;
   container.innerHTML = html;
 }
 
+/* -------------------------
+   Public calculate helpers
+   ------------------------- */
 function calculateClass(){
   const inv = readInventory('class');
   const cfg = readCoreConfigs('class');
@@ -905,5 +1051,4 @@ window.onload = function(){
 };
 </script>
 </body>
-
 </html>
