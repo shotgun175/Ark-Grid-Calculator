@@ -129,15 +129,31 @@
   
   label { font-size: 14px; color: var(--text-muted); cursor: pointer; }
   
+  /* core config row – now wraps nicely on small screens */
   .core-config {
     display: flex;
-    align-items: flex-start;
+    flex-wrap: wrap;
+    align-items: center;
     justify-content: flex-start;
-    gap: 20px;
+    gap: 10px 16px; /* row gap, column gap */
     background: rgba(0,0,0,0.3);
     padding: 8px 12px;
     border: 1px solid rgba(255,255,255,0.05);
     margin-bottom: 8px;
+  }
+
+  /* left + right groups for better wrapping */
+  .core-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .core-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
 
   /* dim + grey out disabled cores */
@@ -324,7 +340,6 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    margin-right: 12px; /* adjust this number to adjust spacing between ? and core dropdown */
     width: 14px;
     height: 14px;
     border-radius: 50%;
@@ -559,7 +574,7 @@ function buildCoreConfig(containerId, prefix){
     div.className = 'core-config';
     div.id = `${prefix}_corecfg_${i}`;
     div.innerHTML = `
-      <label style="display:flex;align-items:center;gap:6px;">
+      <div class="core-left">
         <input type="checkbox" id="${enabledId}" checked>
         <span>Core ${i}</span>
         <span class="core-help-icon" data-tooltip="Enable or disable Core ${i} in optimization">?</span>
@@ -568,12 +583,14 @@ function buildCoreConfig(containerId, prefix){
           <option value="Relic" style="color:#ff5252;">Relic (15 WP)</option>
           <option value="Ancient" style="color:var(--text-gold);">Ancient (17 WP)</option>
         </select>
-      </label>
-      <label class="target-wrap" id="${prefix}_core${i}_target_wrap">Target:
-        <select id="${prefix}_core${i}_target">
-          ${Array.from({length:11}, (_,k)=>10+k).map(v=>`<option value="${v}">${v}</option>`).join('')}
-        </select>
-      </label>
+      </div>
+      <div class="core-right">
+        <label class="target-wrap" id="${prefix}_core${i}_target_wrap">Target:
+          <select id="${prefix}_core${i}_target">
+            ${Array.from({length:11}, (_,k)=>10+k).map(v=>`<option value="${v}">${v}</option>`).join('')}
+          </select>
+        </label>
+      </div>
     `;
     container.appendChild(div);
 
