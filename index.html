@@ -372,6 +372,65 @@
     transform: translate(-50%, -10px) translateY(-100%);
   }
 
+  /* Centered modal dialog for prompts/alerts/confirms */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+  }
+
+  .modal-overlay.is-hidden {
+    display: none;
+  }
+
+  .modal-dialog {
+    background: var(--bg-panel);
+    border: 1px solid var(--la-gold-dim);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.8);
+    border-radius: 10px;
+    padding: 20px 18px 16px;
+    max-width: 360px;
+    width: 100%;
+    font-size: 14px;
+  }
+
+  .modal-title {
+    font-family: 'Cinzel', serif;
+    font-size: 18px;
+    margin: 0 0 8px 0;
+    color: var(--text-gold);
+  }
+
+  .modal-message {
+    margin: 0 0 12px 0;
+    color: var(--text-main);
+  }
+
+  .modal-input {
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 12px;
+    background: var(--bg-input);
+    border: 1px solid #333;
+    color: var(--la-gold);
+    padding: 6px 8px;
+    font-family: 'Lato', sans-serif;
+  }
+
+  .modal-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .modal-buttons button {
+    min-width: 90px;
+  }
+
   @media (max-width: 900px) {
     .page, #resultsArea { 
       flex-direction: column; 
@@ -475,6 +534,19 @@
   </div>
 </div>
 
+<!-- Custom centered modal for alerts / prompts / confirms -->
+<div id="appModalOverlay" class="modal-overlay is-hidden">
+  <div class="modal-dialog">
+    <h3 id="appModalTitle" class="modal-title"></h3>
+    <p id="appModalMessage" class="modal-message"></p>
+    <input id="appModalInput" class="modal-input" type="text" />
+    <div class="modal-buttons">
+      <button id="appModalCancel" class="secondary">Cancel</button>
+      <button id="appModalOk" class="primary-gold">OK</button>
+    </div>
+  </div>
+</div>
+
 <script>
 /* -------------------------
    Constants & Logic
@@ -513,6 +585,108 @@ const TOP_N = 300;
 // Multi-inventory storage keys
 const STORAGE_KEY_MULTI = 'arkGridInventory_v7_multi';
 const STORAGE_KEY_LAST  = 'arkGridInventory_v7_lastPreset';
+
+/* -------------------------
+   Centered modal helpers
+   ------------------------- */
+let modalResolve = null;
+let modalType = null;
+
+function openModal({ title, message, type = 'alert', defaultValue = '' }) {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById('appModalOverlay');
+    const titleEl = document.getElementById('appModalTitle');
+    const msgEl   = document.getElementById('appModalMessage');
+    const inputEl = document.getElementById('appModalInput');
+    const okBtn   = document.getElementById('appModalOk');
+    const cancelBtn = document.getElementById('appModalCancel');
+
+    modalResolve = resolve;
+    modalType = type;
+
+    titleEl.textContent = title || (type === 'confirm' ? 'Please Confirm' : 'Notice');
+    msgEl.textContent = message || '';
+
+    // Configure input visibility
+    if (type === 'prompt') {
+      inputEl.style.display = 'block';
+      inputEl.value = defaultValue || '';
+    } else {
+      inputEl.style.display = 'none';
+      inputEl.value = '';
+    }
+
+    // Configure Cancel visibility
+    if (type === 'alert') {
+      cancelBtn.style.display = 'none';
+    } else {
+      cancelBtn.style.display = 'inline-block';
+    }
+
+    // Remove old handlers
+    okBtn.onclick = null;
+    cancelBtn.onclick = null;
+    document.onkeydown = null;
+
+    function close(result) {
+      overlay.classList.add('is-hidden');
+      document.onkeydown = null;
+      const r = modalResolve;
+      modalResolve = null;
+      if (r) r(result);
+    }
+
+    okBtn.onclick = () => {
+      if (type === 'prompt') {
+        close(inputEl.value);
+      } else {
+        close(true);
+      }
+    };
+
+    cancelBtn.onclick = () => {
+      if (type === 'prompt') {
+        close(null);
+      } else {
+        close(false);
+      }
+    };
+
+    // Keyboard support
+    document.onkeydown = (e) => {
+      if (e.key === 'Escape') {
+        cancelBtn.onclick();
+      } else if (e.key === 'Enter') {
+        okBtn.onclick();
+      }
+    };
+
+    // Show modal
+    overlay.classList.remove('is-hidden');
+
+    // Focus the right thing
+    setTimeout(() => {
+      if (type === 'prompt') {
+        inputEl.focus();
+        inputEl.select();
+      } else {
+        okBtn.focus();
+      }
+    }, 0);
+  });
+}
+
+function customAlert(message) {
+  return openModal({ type: 'alert', message, title: 'Notice' });
+}
+
+function customConfirm(message) {
+  return openModal({ type: 'confirm', message, title: 'Confirm' });
+}
+
+function customPrompt(message, defaultValue) {
+  return openModal({ type: 'prompt', message, defaultValue, title: 'Save Preset' });
+}
 
 /* -------------------------
    Inventory storage helpers
@@ -650,11 +824,11 @@ function resetResultsPanels() {
 }
 
 /* saves inventory + core types + enabled flags into preset storage */
-function saveInventory(){
+async function saveInventory(){
   const select = document.getElementById('inventorySelect');
   const defaultName = (select && select.value) ? select.value : '';
 
-  const name = prompt(
+  const name = await customPrompt(
     'Enter a name for this inventory preset (e.g. "Raid", "PvP", "Alt 1"):',
     defaultName
   );
@@ -688,7 +862,7 @@ function saveInventory(){
   localStorage.setItem(STORAGE_KEY_LAST, trimmed);
 
   refreshPresetDropdown(trimmed);
-  alert(`Inventory saved as "${trimmed}".`);
+  await customAlert(`Inventory saved as "${trimmed}".`);
 }
 
 /* loads inventory + core types + enabled flags from preset storage */
@@ -748,38 +922,41 @@ function loadPresetByName(name, { silent = false } = {}) {
   }
 
   localStorage.setItem(STORAGE_KEY_LAST, name);
-
-  if (!silent) alert(`Inventory "${name}" loaded.`);
   return true;
 }
 
 /* UI handler for loading selected preset */
-function loadInventory(){
+async function loadInventory(){
   const select = document.getElementById('inventorySelect');
   const name = select ? select.value : '';
 
   if (!name) {
-    alert('Select a preset from the dropdown first.');
+    await customAlert('Select a preset from the dropdown first.');
     return;
   }
 
-  const ok = loadPresetByName(name, { silent: false });
+  const ok = loadPresetByName(name, { silent: true });
 
   if (!ok) {
-    alert('Preset not found.');
+    await customAlert('Preset not found.');
     refreshPresetDropdown();
+  } else {
+    await customAlert(`Inventory "${name}" loaded.`);
   }
 }
 
-function deleteInventory() {
+async function deleteInventory() {
   const select = document.getElementById('inventorySelect');
   const name = select ? select.value : '';
   if (!name) {
-    alert('Select a preset to delete.');
+    await customAlert('Select a preset to delete.');
     return;
   }
 
-  if (!confirm(`Delete preset "${name}"? This cannot be undone.`)) return;
+  const confirmed = await customConfirm(
+    `Delete preset "${name}"? This cannot be undone.`
+  );
+  if (!confirmed) return;
 
   const all = getAllInventories();
   if (all[name]) {
@@ -792,9 +969,9 @@ function deleteInventory() {
     }
 
     refreshPresetDropdown();
-    alert(`Preset "${name}" deleted.`);
+    await customAlert(`Preset "${name}" deleted.`);
   } else {
-    alert('Preset not found.');
+    await customAlert('Preset not found.');
     refreshPresetDropdown();
   }
 }
@@ -1169,4 +1346,3 @@ window.onload = function(){
 </script>
 </body>
 </html>
-
