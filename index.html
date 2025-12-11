@@ -272,6 +272,22 @@
   .badge { background: #000; color: var(--text-muted); padding: 4px 8px; border: 1px solid #333; font-size: 11px; display: inline-block; }
   .remaining-badges { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 8px; }
 
+  /* Unsaved changes badge (near Preset label) */
+  .unsaved-badge {
+    display: none;
+    padding: 2px 6px;
+    font-size: 10px;
+    font-family: 'Cinzel', serif;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: #ffebb8;
+    background: linear-gradient(180deg, #5e3d3d, #3a1f1f);
+    border: 1px solid #8a4b4b;
+    border-radius: 10px;
+    box-shadow: 0 0 8px rgba(138, 75, 75, 0.6);
+  }
+  .unsaved-badge.visible { display: inline-block; }
+
   /* animated collapse for the target selector */
   .target-wrap {
     display: inline-block;
@@ -372,63 +388,125 @@
     transform: translate(-50%, -10px) translateY(-100%);
   }
 
-  /* Centered modal dialog for prompts/alerts/confirms */
+  /* Centered modal dialog for prompts/alerts/confirms (Lost Ark style + fade) */
   .modal-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.65);
+    background: radial-gradient(circle at 50% 20%, rgba(40, 52, 72, 0.45), rgba(0, 0, 0, 0.85));
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 9999;
   }
 
-  .modal-overlay.is-hidden {
-    display: none;
-  }
+  .modal-overlay.is-hidden { display: none; }
+
+  .modal-overlay:not(.is-hidden) { animation: overlayFade 0.18s ease-out; }
 
   .modal-dialog {
-    background: var(--bg-panel);
-    border: 1px solid var(--la-gold-dim);
-    box-shadow: 0 20px 40px rgba(0,0,0,0.8);
-    border-radius: 10px;
-    padding: 20px 18px 16px;
-    max-width: 360px;
-    width: 100%;
+    position: relative;
+    background: radial-gradient(circle at 50% 0%, rgba(90, 104, 136, 0.2), rgba(10, 12, 18, 0.98));
+    border-radius: 14px;
+    padding: 18px 18px 16px;
+    max-width: 420px;
+    width: calc(100% - 32px);
     font-size: 14px;
+    box-shadow:
+      0 22px 55px rgba(0, 0, 0, 0.95),
+      0 0 0 1px rgba(255, 255, 255, 0.03),
+      0 0 18px rgba(194, 160, 118, 0.4);
+    border: 1px solid rgba(194, 160, 118, 0.7);
+    overflow: hidden;
+    animation: dialogPop 0.22s ease-out;
+  }
+
+  .modal-dialog::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    pointer-events: none;
+  }
+
+  .modal-dialog::after {
+    content: "";
+    position: absolute;
+    inset: 6px;
+    border-radius: 12px;
+    border: 1px solid rgba(194, 160, 118, 0.45);
+    box-shadow: 0 0 18px rgba(194, 160, 118, 0.35);
+    pointer-events: none;
   }
 
   .modal-title {
+    position: relative;
+    z-index: 1;
     font-family: 'Cinzel', serif;
     font-size: 18px;
-    margin: 0 0 8px 0;
+    margin: 0 0 10px 0;
     color: var(--text-gold);
+    text-align: center;
+    letter-spacing: 1px;
+    text-shadow: 0 0 10px rgba(0, 0, 0, 0.9);
+  }
+
+  .modal-title::after {
+    content: "";
+    display: block;
+    margin: 6px auto 0;
+    width: 110px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(230, 204, 156, 0.9), transparent);
+    box-shadow: 0 0 8px rgba(230, 204, 156, 0.7);
   }
 
   .modal-message {
+    position: relative;
+    z-index: 1;
     margin: 0 0 12px 0;
     color: var(--text-main);
+    text-align: center;
+    line-height: 1.4;
   }
 
   .modal-input {
+    position: relative;
+    z-index: 1;
     width: 100%;
     box-sizing: border-box;
-    margin-bottom: 12px;
-    background: var(--bg-input);
-    border: 1px solid #333;
+    margin: 10px 0 16px;
+    background: rgba(4, 6, 10, 0.95);
+    border: 1px solid rgba(174, 188, 209, 0.5);
     color: var(--la-gold);
-    padding: 6px 8px;
+    padding: 7px 9px;
     font-family: 'Lato', sans-serif;
+    border-radius: 4px;
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.9), 0 0 8px rgba(174, 188, 209, 0.3);
+  }
+
+  .modal-input:focus {
+    outline: none;
+    border-color: var(--la-gold);
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.9), 0 0 12px rgba(194, 160, 118, 0.55);
   }
 
   .modal-buttons {
+    position: relative;
+    z-index: 1;
     display: flex;
-    justify-content: flex-end;
-    gap: 8px;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 4px;
   }
 
-  .modal-buttons button {
-    min-width: 90px;
+  .modal-buttons button { min-width: 110px; }
+
+  @keyframes overlayFade { from { opacity: 0; } to { opacity: 1; } }
+
+  @keyframes dialogPop {
+    from { opacity: 0; transform: scale(0.9) translateY(-10px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
   }
 
   @media (max-width: 900px) {
@@ -509,11 +587,16 @@
 
 <div class="common-controls">
   <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-    <label for="inventorySelect" style="font-size:13px; color:var(--text-muted);">Preset:</label>
+    <label for="inventorySelect"
+      style="font-size:13px; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
+      Preset:
+      <span id="unsavedBadge" class="unsaved-badge" title="You have unsaved changes">Unsaved</span>
+    </label>
     <select id="inventorySelect">
       <option value="">(no preset selected)</option>
     </select>
   </div>
+
   <button class="secondary" onclick="saveInventory()">Save Preset</button>
   <button class="secondary" onclick="loadInventory()">Load Preset</button>
   <button class="secondary" onclick="deleteInventory()">Delete Preset</button>
@@ -590,7 +673,6 @@ const STORAGE_KEY_LAST  = 'arkGridInventory_v7_lastPreset';
    Centered modal helpers
    ------------------------- */
 let modalResolve = null;
-let modalType = null;
 
 function openModal({ title, message, type = 'alert', defaultValue = '' }) {
   return new Promise((resolve) => {
@@ -602,7 +684,6 @@ function openModal({ title, message, type = 'alert', defaultValue = '' }) {
     const cancelBtn = document.getElementById('appModalCancel');
 
     modalResolve = resolve;
-    modalType = type;
 
     titleEl.textContent = title || (type === 'confirm' ? 'Please Confirm' : 'Notice');
     msgEl.textContent = message || '';
@@ -637,28 +718,19 @@ function openModal({ title, message, type = 'alert', defaultValue = '' }) {
     }
 
     okBtn.onclick = () => {
-      if (type === 'prompt') {
-        close(inputEl.value);
-      } else {
-        close(true);
-      }
+      if (type === 'prompt') close(inputEl.value);
+      else close(true);
     };
 
     cancelBtn.onclick = () => {
-      if (type === 'prompt') {
-        close(null);
-      } else {
-        close(false);
-      }
+      if (type === 'prompt') close(null);
+      else close(false);
     };
 
     // Keyboard support
     document.onkeydown = (e) => {
-      if (e.key === 'Escape') {
-        cancelBtn.onclick();
-      } else if (e.key === 'Enter') {
-        okBtn.onclick();
-      }
+      if (e.key === 'Escape') cancelBtn.onclick();
+      else if (e.key === 'Enter') okBtn.onclick();
     };
 
     // Show modal
@@ -676,16 +748,48 @@ function openModal({ title, message, type = 'alert', defaultValue = '' }) {
   });
 }
 
-function customAlert(message) {
-  return openModal({ type: 'alert', message, title: 'Notice' });
+function customAlert(message, title = 'Notice') {
+  return openModal({ type: 'alert', message, title });
 }
 
-function customConfirm(message) {
-  return openModal({ type: 'confirm', message, title: 'Confirm' });
+function customConfirm(message, title = 'Confirm Action') {
+  return openModal({ type: 'confirm', message, title });
 }
 
-function customPrompt(message, defaultValue) {
-  return openModal({ type: 'prompt', message, defaultValue, title: 'Save Preset' });
+function customPrompt(message, defaultValue, title = 'Save Preset') {
+  return openModal({ type: 'prompt', message, defaultValue, title });
+}
+
+/* -------------------------
+   Dirty state tracking + badge
+   ------------------------- */
+let lastPresetName = null;
+let lastSnapshot = null;
+
+function snapshotState() {
+  return {
+    classInv: readInventory('class'),
+    generalInv: readInventory('general'),
+    classCfg: readCoreConfigs('class'),
+    generalCfg: readCoreConfigs('general')
+  };
+}
+
+function setSnapshot(name) {
+  lastPresetName = name || null;
+  lastSnapshot = snapshotState();
+}
+
+function hasUnsavedChanges() {
+  if (!lastPresetName || !lastSnapshot) return false;
+  return JSON.stringify(snapshotState()) !== JSON.stringify(lastSnapshot);
+}
+
+function updateUnsavedBadge() {
+  const badge = document.getElementById('unsavedBadge');
+  if (!badge) return;
+  if (hasUnsavedChanges()) badge.classList.add('visible');
+  else badge.classList.remove('visible');
 }
 
 /* -------------------------
@@ -719,11 +823,8 @@ function refreshPresetDropdown(selectedName) {
   }
   select.innerHTML = options;
 
-  if (current && names.includes(current)) {
-    select.value = current;
-  } else {
-    select.value = '';
-  }
+  if (current && names.includes(current)) select.value = current;
+  else select.value = '';
 }
 
 /* -------------------------
@@ -786,6 +887,7 @@ function buildCoreConfig(containerId, prefix){
         div.classList.add('core-disabled');
         if (targetWrap) targetWrap.classList.add('collapsed');
       }
+      updateUnsavedBadge();
     }
     cb.addEventListener('change', syncEnabled);
     syncEnabled();
@@ -798,6 +900,7 @@ function buildCoreConfig(containerId, prefix){
       const wrap = document.getElementById(`${prefix}_core${i}_target_wrap`);
       if(hide) wrap.style.display = 'none'; else wrap.style.display = 'inline-block';
     }
+    updateUnsavedBadge();
   }
   autoCheckbox.addEventListener('change', updateVisibility);
   updateVisibility();
@@ -830,7 +933,8 @@ async function saveInventory(){
 
   const name = await customPrompt(
     'Enter a name for this inventory preset (e.g. "Raid", "PvP", "Alt 1"):',
-    defaultName
+    defaultName,
+    'Save Preset'
   );
   if (!name) return;
   const trimmed = name.trim();
@@ -842,12 +946,20 @@ async function saveInventory(){
   const classCoreCfg   = readCoreConfigs('class');
   const generalCoreCfg = readCoreConfigs('general');
 
-  const classCores        = classCoreCfg.map(c => c.rarity);
-  const generalCores      = generalCoreCfg.map(c => c.rarity);
-  const classCoreEnabled  = classCoreCfg.map(c => !!c.enabled);
-  const generalCoreEnabled= generalCoreCfg.map(c => !!c.enabled);
+  const classCores         = classCoreCfg.map(c => c.rarity);
+  const generalCores       = generalCoreCfg.map(c => c.rarity);
+  const classCoreEnabled   = classCoreCfg.map(c => !!c.enabled);
+  const generalCoreEnabled = generalCoreCfg.map(c => !!c.enabled);
 
   const all = getAllInventories();
+
+  if (all[trimmed]) {
+    const overwrite = await customConfirm(
+      `A preset named "${trimmed}" already exists. Overwrite it?`,
+      'Overwrite Preset'
+    );
+    if (!overwrite) return;
+  }
 
   all[trimmed] = {
     class: classInv,
@@ -862,7 +974,12 @@ async function saveInventory(){
   localStorage.setItem(STORAGE_KEY_LAST, trimmed);
 
   refreshPresetDropdown(trimmed);
-  await customAlert(`Inventory saved as "${trimmed}".`);
+
+  // Saved state is now the baseline
+  setSnapshot(trimmed);
+  updateUnsavedBadge();
+
+  await customAlert(`Inventory saved as "${trimmed}".`, 'Preset Saved');
 }
 
 /* loads inventory + core types + enabled flags from preset storage */
@@ -922,6 +1039,11 @@ function loadPresetByName(name, { silent = false } = {}) {
   }
 
   localStorage.setItem(STORAGE_KEY_LAST, name);
+
+  // Loaded state is now the baseline
+  setSnapshot(name);
+  updateUnsavedBadge();
+
   return true;
 }
 
@@ -931,17 +1053,17 @@ async function loadInventory(){
   const name = select ? select.value : '';
 
   if (!name) {
-    await customAlert('Select a preset from the dropdown first.');
+    await customAlert('Select a preset from the dropdown first.', 'Load Preset');
     return;
   }
 
   const ok = loadPresetByName(name, { silent: true });
 
   if (!ok) {
-    await customAlert('Preset not found.');
+    await customAlert('Preset not found.', 'Load Preset');
     refreshPresetDropdown();
   } else {
-    await customAlert(`Inventory "${name}" loaded.`);
+    await customAlert(`Inventory "${name}" loaded.`, 'Preset Loaded');
   }
 }
 
@@ -949,12 +1071,13 @@ async function deleteInventory() {
   const select = document.getElementById('inventorySelect');
   const name = select ? select.value : '';
   if (!name) {
-    await customAlert('Select a preset to delete.');
+    await customAlert('Select a preset to delete.', 'Delete Preset');
     return;
   }
 
   const confirmed = await customConfirm(
-    `Delete preset "${name}"? This cannot be undone.`
+    `This will permanently delete the preset "${name}".`,
+    'Delete Preset'
   );
   if (!confirmed) return;
 
@@ -964,14 +1087,19 @@ async function deleteInventory() {
     saveAllInventories(all);
 
     const last = localStorage.getItem(STORAGE_KEY_LAST);
-    if (last === name) {
-      localStorage.removeItem(STORAGE_KEY_LAST);
-    }
+    if (last === name) localStorage.removeItem(STORAGE_KEY_LAST);
 
     refreshPresetDropdown();
-    await customAlert(`Preset "${name}" deleted.`);
+    await customAlert(`Preset "${name}" deleted.`, 'Preset Deleted');
+
+    // If we deleted the active baseline preset, clear baseline tracking
+    if (lastPresetName === name) {
+      lastPresetName = null;
+      lastSnapshot = null;
+      updateUnsavedBadge();
+    }
   } else {
-    await customAlert('Preset not found.');
+    await customAlert('Preset not found.', 'Delete Preset');
     refreshPresetDropdown();
   }
 }
@@ -994,6 +1122,7 @@ function resetDefaults(){
     }
   });
   resetResultsPanels();
+  updateUnsavedBadge();
 }
 
 /* -------------------------
@@ -1120,9 +1249,7 @@ function optimizeThreeCores(inv, coreConfigs){
         key
       };
 
-      if (!best || isBetterKey(key, best.key)) {
-        best = candidate;
-      }
+      if (!best || isBetterKey(key, best.key)) best = candidate;
     }
     return { best };
   }
@@ -1162,9 +1289,7 @@ function optimizeThreeCores(inv, coreConfigs){
           key
         };
 
-        if (!best || isBetterKey(key, best.key)) {
-          best = candidate;
-        }
+        if (!best || isBetterKey(key, best.key)) best = candidate;
       }
     }
     return { best };
@@ -1216,16 +1341,13 @@ function optimizeThreeCores(inv, coreConfigs){
             key
           };
 
-          if(!best || isBetterKey(key, best.key)) {
-            best = candidate;
-          }
+          if(!best || isBetterKey(key, best.key)) best = candidate;
         }
       }
     }
     return { best };
   }
 
-  // should never hit here, but just in case
   return { best: null, reason: 'unexpected-state' };
 }
 
@@ -1322,10 +1444,46 @@ document.addEventListener('focusin', function(e) {
   }
 });
 
+// Keep badge updated on any input changes
+document.addEventListener('input', () => {
+  updateUnsavedBadge();
+});
+
 window.onload = function(){
   buildCoreConfig('class_core_config','class');
   buildCoreConfig('general_core_config','general');
   refreshPresetDropdown();
+
+  // Warn when switching presets if there are unsaved changes (selection change only)
+  const presetSelect = document.getElementById('inventorySelect');
+  if (presetSelect) {
+    let lastSelectValue = presetSelect.value;
+
+    presetSelect.addEventListener('change', async function (e) {
+      const newValue = e.target.value;
+
+      // No active baseline or no changes -> allow
+      if (!lastPresetName || !hasUnsavedChanges()) {
+        lastSelectValue = newValue;
+        return;
+      }
+
+      // Switching to a different preset while dirty
+      if (newValue && newValue !== lastPresetName) {
+        const ok = await customConfirm(
+          `You have unsaved changes to "${lastPresetName}". Any changes will be lost if you continue.`,
+          'Unsaved Changes'
+        );
+
+        if (!ok) {
+          e.target.value = lastSelectValue; // revert
+          return;
+        }
+      }
+
+      lastSelectValue = newValue;
+    });
+  }
 
   let autoLoaded = false;
   const last = localStorage.getItem(STORAGE_KEY_LAST);
@@ -1342,6 +1500,8 @@ window.onload = function(){
   if (!autoLoaded) {
     calculateBoth();
   }
+
+  updateUnsavedBadge();
 };
 </script>
 </body>
