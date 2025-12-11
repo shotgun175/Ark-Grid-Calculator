@@ -182,6 +182,10 @@
     text-shadow: 0 0 5px var(--la-gold);
   }
 
+  button:active {
+    transform: translateY(1px);
+  }
+
   .panel-btn-row { margin-top: auto; padding-top: 16px; display: flex; justify-content: center; }
   .panel-btn-row button { width: 100%; font-size: 14px; letter-spacing: 1px; }
 
@@ -286,7 +290,16 @@
     border-radius: 10px;
     box-shadow: 0 0 8px rgba(138, 75, 75, 0.6);
   }
-  .unsaved-badge.visible { display: inline-block; }
+  
+  .unsaved-badge.visible {
+    display: inline-block;
+    animation: badgeFadeIn 0.2s ease-out;
+  }
+
+  @keyframes badgeFadeIn {
+    from { opacity: 0; transform: translateY(-2px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
 
   /* animated collapse for the target selector */
   .target-wrap {
@@ -509,6 +522,39 @@
     to   { opacity: 1; transform: scale(1) translateY(0); }
   }
 
+  /* Modal closing animations */
+  .modal-overlay.is-closing {
+    animation: overlayFadeOut 0.16s ease-in forwards;
+  }
+
+  .modal-overlay.is-closing .modal-dialog {
+    animation: dialogClose 0.16s ease-in forwards;
+  }
+
+  @keyframes overlayFadeOut {
+    from { opacity: 1; }
+    to   { opacity: 0; }
+  }
+
+  @keyframes dialogClose {
+    from {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+    to {
+      opacity: 0;
+      transform: scale(0.92) translateY(6px);
+    }
+  }
+
+  /* Respect reduced motion preferences */
+  @media (prefers-reduced-motion: reduce) {
+    .modal-overlay,
+    .modal-dialog {
+      animation: none !important;
+    }
+  }
+
   @media (max-width: 900px) {
     .page, #resultsArea { 
       flex-direction: column; 
@@ -710,11 +756,23 @@ function openModal({ title, message, type = 'alert', defaultValue = '' }) {
     document.onkeydown = null;
 
     function close(result) {
-      overlay.classList.add('is-hidden');
+      // Prevent double-close
+      if (overlay.classList.contains('is-closing')) return;
+
+      overlay.classList.add('is-closing');
+
+      // Clean up keyboard handler immediately
       document.onkeydown = null;
-      const r = modalResolve;
-      modalResolve = null;
-      if (r) r(result);
+
+      // Wait for animation to finish, then fully hide
+      setTimeout(() => {
+        overlay.classList.remove('is-closing');
+        overlay.classList.add('is-hidden');
+
+        const r = modalResolve;
+        modalResolve = null;
+        if (r) r(result);
+      }, 160); // must match CSS duration
     }
 
     okBtn.onclick = () => {
