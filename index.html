@@ -1520,23 +1520,37 @@ window.onload = function(){
     presetSelect.addEventListener('change', async function (e) {
       const newValue = e.target.value;
 
-      // No active baseline or no changes -> allow
-      if (!lastPresetName || !hasUnsavedChanges()) {
-        lastSelectValue = newValue;
+      // If nothing selected, just update state
+      if (!newValue) {
+        lastSelectValue = '';
         return;
       }
 
-      // Switching to a different preset while dirty
-      if (newValue && newValue !== lastPresetName) {
+      // No baseline or no unsaved changes → load immediately
+      if (!lastPresetName || !hasUnsavedChanges()) {
+        lastSelectValue = newValue;
+        loadPresetByName(newValue, { silent: true });
+        await customAlert(`Inventory "${newValue}" loaded.`, 'Preset Loaded');
+        return;
+      }
+
+      // Dirty state + switching to a different preset
+      if (newValue !== lastPresetName) {
         const ok = await customConfirm(
           `You have unsaved changes to "${lastPresetName}". Any changes will be lost if you continue.`,
           'Unsaved Changes'
         );
 
         if (!ok) {
-          e.target.value = lastSelectValue; // revert
+          e.target.value = lastSelectValue; // revert selection
           return;
         }
+
+        // User confirmed → load immediately
+        lastSelectValue = newValue;
+        loadPresetByName(newValue, { silent: true });
+        await customAlert(`Inventory "${newValue}" loaded.`, 'Preset Loaded');
+        return;
       }
 
       lastSelectValue = newValue;
