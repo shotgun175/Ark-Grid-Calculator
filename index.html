@@ -837,8 +837,13 @@ function snapshotState() {
   return {
     classInv: readInventory('class'),
     generalInv: readInventory('general'),
-    classCfg: readCoreConfigs('class'),
-    generalCfg: readCoreConfigs('general')
+    classAutoTarget: readAutoTarget('class'),
+    generalAutoTarget: readAutoTarget('general'),
+    classCoreCfg: readCoreConfigs('class'),
+    generalCoreCfg: readCoreConfigs('general'),
+    // store raw target dropdown values so "dirty" works correctly even with Auto on
+    classCoreTargets: readCoreTargets('class'),
+    generalCoreTargets: readCoreTargets('general')
   };
 }
 
@@ -993,6 +998,20 @@ function resetResultsPanels() {
     '<div class="small">Pending calculation...</div>';
 }
 
+function readAutoTarget(prefix) {
+  const el = document.getElementById(prefix === 'class' ? 'classAuto' : 'generalAuto');
+  return !!(el && el.checked);
+}
+
+function readCoreTargets(prefix) {
+  const targets = [];
+  for (let i = 1; i <= 3; i++) {
+    const el = document.getElementById(`${prefix}_core${i}_target`);
+    targets.push(el ? parseInt(el.value || '20', 10) : 20);
+  }
+  return targets;
+}
+
 /* saves inventory + core types + enabled flags into preset storage */
 async function saveInventory(){
   const select = document.getElementById('inventorySelect');
@@ -1017,6 +1036,11 @@ async function saveInventory(){
   const generalCores       = generalCoreCfg.map(c => c.rarity);
   const classCoreEnabled   = classCoreCfg.map(c => !!c.enabled);
   const generalCoreEnabled = generalCoreCfg.map(c => !!c.enabled);
+  const classAutoTarget   = readAutoTarget('class');
+  const generalAutoTarget = readAutoTarget('general');
+  // IMPORTANT: store the actual target dropdown values (even if Auto is ON)
+  const classCoreTargets   = readCoreTargets('class');
+  const generalCoreTargets = readCoreTargets('general');
 
   const all = getAllInventories();
 
@@ -1031,11 +1055,16 @@ async function saveInventory(){
   all[trimmed] = {
     class: classInv,
     general: generalInv,
+    classAutoTarget,
+    generalAutoTarget,
+    classCoreTargets,
+    generalCoreTargets,
     classCores,
     generalCores,
     classCoreEnabled,
     generalCoreEnabled
   };
+
 
   saveAllInventories(all);
   localStorage.setItem(STORAGE_KEY_LAST, trimmed);
@@ -1064,6 +1093,36 @@ function loadPresetByName(name, { silent = false } = {}) {
   }
 
   resetResultsPanels();
+
+  // restore Auto Target checkboxes FIRST (affects visibility and target handling)
+  if (typeof obj.classAutoTarget === 'boolean') {
+    const cb = document.getElementById('classAuto');
+    if (cb) {
+      cb.checked = obj.classAutoTarget;
+      cb.dispatchEvent(new Event('change'));
+    }
+  }
+  if (typeof obj.generalAutoTarget === 'boolean') {
+    const cb = document.getElementById('generalAuto');
+    if (cb) {
+      cb.checked = obj.generalAutoTarget;
+      cb.dispatchEvent(new Event('change'));
+    }
+  }
+
+  // restore target dropdown values (even if Auto is on, keep them stored)
+  if (Array.isArray(obj.classCoreTargets)) {
+    obj.classCoreTargets.forEach((target, i) => {
+      const el = document.getElementById(`class_core${i+1}_target`);
+      if (el && target != null) el.value = target;
+    });
+  }
+  if (Array.isArray(obj.generalCoreTargets)) {
+    obj.generalCoreTargets.forEach((target, i) => {
+      const el = document.getElementById(`general_core${i+1}_target`);
+      if (el && target != null) el.value = target;
+    });
+  }
 
   // restore core rarity + enabled for class
   if (obj.classCores) {
