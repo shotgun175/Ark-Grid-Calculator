@@ -651,22 +651,6 @@
     to   { opacity: 1; transform: translateY(0) scale(1); }
   }
 
-  /* Results collapse */
-  #resultsArea.collapsed {
-    max-height: 0;
-    opacity: 0;
-    overflow: hidden;
-    pointer-events: none;
-    transition: max-height 0.25s ease, opacity 0.25s ease;
-    margin-top: 0;
-  }
-
-  #resultsArea:not(.collapsed) {
-    max-height: 4000px;
-    opacity: 1;
-    transition: max-height 0.25s ease, opacity 0.25s ease;
-  }
-
   /* Respect reduced motion preferences */
   @media (prefers-reduced-motion: reduce) {
     .modal-overlay,
@@ -781,8 +765,6 @@
     Auto-calc on change
   </label>
 
-  <button id="resultsToggleBtn" class="secondary" onclick="toggleResults()">Hide Results</button>
-
   <button class="secondary" onclick="resetDefaults()">Reset Data</button>
   <button class="primary-gold" onclick="calculateBoth()">Calculate Both</button>
 </div>
@@ -858,7 +840,6 @@ const TOP_N = 300;
 const STORAGE_KEY_MULTI = 'arkGridInventory_v7_multi';
 const STORAGE_KEY_LAST  = 'arkGridInventory_v7_lastPreset';
 const STORAGE_KEY_AUTOCALC = 'arkGridInventory_v7_autoCalc';
-const STORAGE_KEY_RESULTS_COLLAPSED = 'arkGridInventory_v7_resultsCollapsed';
 
 /* -------------------------
    Tiny helpers
@@ -2142,23 +2123,6 @@ document.addEventListener('wheel', (e) => {
 }, { passive: false });
 
 /* -------------------------
-   Results collapse
-   ------------------------- */
-function toggleResults(forceCollapsed = null) {
-  const area = document.getElementById('resultsArea');
-  const btn = document.getElementById('resultsToggleBtn');
-  if (!area || !btn) return;
-
-  const collapsed = (forceCollapsed === null) ? !area.classList.contains('collapsed') : !!forceCollapsed;
-
-  if (collapsed) area.classList.add('collapsed');
-  else area.classList.remove('collapsed');
-
-  btn.textContent = collapsed ? 'Show Results' : 'Hide Results';
-  localStorage.setItem(STORAGE_KEY_RESULTS_COLLAPSED, collapsed ? '1' : '0');
-}
-
-/* -------------------------
    Auto-select numeric text when focused
    ------------------------- */
 document.addEventListener('focusin', function(e) {
@@ -2245,13 +2209,6 @@ window.onload = function(){
   setupPresetSelectChange();
   loadAutoCalcToggle();
   setupSaveSplit();
-
-  const collapsedPref = localStorage.getItem(STORAGE_KEY_RESULTS_COLLAPSED);
-  if (collapsedPref === '1' || (collapsedPref === null && window.innerWidth < 900)) {
-    toggleResults(true);
-  } else {
-    toggleResults(false);
-  }
 
   let autoLoaded = false;
   const last = localStorage.getItem(STORAGE_KEY_LAST);
